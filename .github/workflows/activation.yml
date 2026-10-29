@@ -3,20 +3,17 @@ on: workflow_dispatch
 jobs:
   request:
     runs-on: ubuntu-latest
-    container:
-      image: unityci/editor:2021.3.16f1-base-1
     steps:
-      - name: Generate .alf file
+      - name: Generate .alf file with Docker
         run: |
-          /opt/unity/Editor/Unity -batchmode -createManualActivationFile -logFile /tmp/unity.log || true
-          cat /tmp/unity.log || true
-          find / -type f -name "*.alf" 2>/dev/null | head -20
-          mkdir -p /github/workspace/alf
-          find /root -name "*.alf" -exec cp {} /github/workspace/alf/ \; 2>/dev/null || true
-          find / -name "Unity_lic.alf" -exec cp {} /github/workspace/alf/ \; 2>/dev/null || true
-          ls -R /github/workspace/alf/
+          mkdir -p ./alf_output
+          chmod 777 ./alf_output
+          echo "Running Unity to generate ALF..."
+          docker run --rm -v $(pwd)/alf_output:/alf -w /alf --user root unityci/editor:2021.3.16f1-base-1 bash -c "/opt/unity/Editor/Unity -batchmode -createManualActivationFile -logFile /alf/unity.log || true; find /root -name '*.alf' -exec cp -v {} /alf/ \; 2>/dev/null; ls -la /alf/; cat /alf/unity.log || true" || true
+          ls -R ./alf_output
+          
       - name: Upload .alf file
         uses: actions/upload-artifact@v4
         with:
           name: Manual Activation File
-          path: /github/workspace/alf
+          path: ./alf_output
